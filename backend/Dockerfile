@@ -1,36 +1,14 @@
-# Multi-stage build for optimized Python RAG Chatbot with uv
-FROM python:3.11-slim as builder
-
-# Install uv
-RUN apt-get update && apt-get install -y curl && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    rm -rf /var/lib/apt/lists/*
-
-# Add uv to PATH
-ENV PATH="/root/.local/bin:$PATH"
-
-# Set working directory
-WORKDIR /app
-
-# Copy dependency files
-COPY pyproject.toml .
-COPY .python-version .
-COPY README.md .
-
-# Create virtual environment and install dependencies
-RUN uv venv && \
-    uv sync --no-dev
-
-# Production stage
+# 단순화된 Python RAG Chatbot Dockerfile
 FROM python:3.11-slim
 
 # Cache buster to force rebuild
-ARG CACHE_BUST=2025-08-30-23-00
+ARG CACHE_BUST=2025-08-30-23-15
 RUN echo "Cache bust: $CACHE_BUST"
 
-# Install runtime dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -39,11 +17,17 @@ RUN useradd --create-home --shell /bin/bash app
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder --chown=app:app /app/.venv /app/.venv
+# Copy dependency files
+COPY pyproject.toml .
+COPY README.md .
 
-# Fix permissions for virtual environment executables (include symlinks)
-RUN chmod -R +x /app/.venv/bin/ 2>/dev/null || true
+# Install Python dependencies directly to system Python
+RUN pip install --no-cache-dir fastapi uvicorn python-multipart \
+    google-generativeai openai anthropic \
+    qdrant-client sentence-transformers \
+    langchain langchain-community \
+    python-dotenv pyyaml aiofiles \
+    slowapi redis pandas numpy
 
 # Copy application code
 COPY --chown=app:app . .
@@ -55,10 +39,6 @@ RUN mkdir -p logs uploads/temp && \
 # Switch to non-root user
 USER app
 
-# Add virtual environment to PATH
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH=/app
-
 # Expose port
 EXPOSE 8000
 
@@ -66,15 +46,10 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Create startup script with direct venv python execution
+# Create simple start script
 RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo 'cd /app' >> /app/start.sh && \
-    echo 'echo "Using Python: $(/app/.venv/bin/python --version)"' >> /app/start.sh && \
-    echo 'echo "Available modules: $(/app/.venv/bin/python -c "import sys; print([p for p in sys.path])")"' >> /app/start.sh && \
-    echo 'exec /app/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' >> /app/start.sh && \
-    chmod +x /app/start.sh && \
-    echo "Startup script created:" && cat /app/start.sh && \
-    echo "Script permissions:" && ls -la /app/start.sh
+    echo 'exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 # Command to run the application
 CMD ["/app/start.sh"]
