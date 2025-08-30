@@ -25,7 +25,7 @@ RUN uv venv && \
 FROM python:3.11-slim
 
 # Cache buster to force rebuild
-ARG CACHE_BUST=2025-08-30-22-15
+ARG CACHE_BUST=2025-08-30-22-30
 RUN echo "Cache bust: $CACHE_BUST"
 
 # Install runtime dependencies
@@ -42,8 +42,8 @@ WORKDIR /app
 # Copy virtual environment from builder
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
-# Fix permissions for virtual environment executables
-RUN chmod +x /app/.venv/bin/*
+# Fix permissions for virtual environment executables (ignore symlinks and errors)
+RUN find /app/.venv/bin -type f -exec chmod +x {} \; || true
 
 # Copy application code
 COPY --chown=app:app . .
