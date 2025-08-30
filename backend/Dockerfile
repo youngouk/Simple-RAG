@@ -22,12 +22,47 @@ COPY pyproject.toml .
 COPY README.md .
 
 # Install Python dependencies directly to system Python
-RUN pip install --no-cache-dir fastapi uvicorn python-multipart \
-    google-generativeai openai anthropic \
-    qdrant-client sentence-transformers \
-    langchain langchain-community \
-    python-dotenv pyyaml aiofiles \
-    slowapi redis pandas numpy
+RUN pip install --no-cache-dir \
+    # FastAPI and server
+    "fastapi>=0.104.1" \
+    "uvicorn[standard]>=0.24.0" \
+    "python-multipart>=0.0.6" \
+    "websockets>=12.0" \
+    # HTTP client
+    "httpx>=0.25.2" \
+    # AI libraries  
+    "google-generativeai>=0.3.2" \
+    "anthropic>=0.7.8" \
+    "openai>=1.3.8" \
+    "cohere>=4.37" \
+    # Vector database
+    "qdrant-client>=1.6.9" \
+    # Document processing
+    "pypdf>=3.17.0" \
+    "python-docx>=1.1.0" \
+    "openpyxl>=3.1.2" \
+    "pandas>=2.1.4" \
+    "beautifulsoup4>=4.12.2" \
+    "markdown>=3.5.1" \
+    # LangChain
+    "langchain>=0.1.9" \
+    "langchain-google-genai>=0.0.8" \
+    "langchain-openai>=0.0.5" \
+    "langchain-qdrant>=0.1.0" \
+    # FastEmbed for BM42 sparse vectors
+    "fastembed>=0.3.0" \
+    # Text processing
+    "tiktoken>=0.5.2" \
+    # Configuration
+    "pyyaml>=6.0.1" \
+    "python-dotenv>=1.0.0" \
+    "pydantic-settings>=2.1.0" \
+    # Logging and monitoring
+    "structlog>=23.2.0" \
+    # Rate limiting
+    "slowapi>=0.1.9" \
+    # System monitoring
+    "psutil>=5.9.0"
 
 # Copy application code
 COPY --chown=app:app . .
