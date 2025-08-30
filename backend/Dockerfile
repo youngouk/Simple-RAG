@@ -25,7 +25,7 @@ RUN uv venv && \
 FROM python:3.11-slim
 
 # Cache buster to force rebuild
-ARG CACHE_BUST=2025-08-30-22-30
+ARG CACHE_BUST=2025-08-30-22-45
 RUN echo "Cache bust: $CACHE_BUST"
 
 # Install runtime dependencies
@@ -42,8 +42,8 @@ WORKDIR /app
 # Copy virtual environment from builder
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
-# Fix permissions for virtual environment executables (ignore symlinks and errors)
-RUN find /app/.venv/bin -type f -exec chmod +x {} \; || true
+# Fix permissions for virtual environment executables (include symlinks)
+RUN chmod -R +x /app/.venv/bin/ 2>/dev/null || true
 
 # Copy application code
 COPY --chown=app:app . .
@@ -66,8 +66,11 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Create startup script
-RUN echo '#!/bin/bash\nexec /app/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' > /app/start.sh && \
+# Create startup script with absolute python path
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'cd /app' >> /app/start.sh && \
+    echo 'export PATH="/app/.venv/bin:$PATH"' >> /app/start.sh && \
+    echo 'exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' >> /app/start.sh && \
     chmod +x /app/start.sh && \
     echo "Startup script created:" && cat /app/start.sh && \
     echo "Script permissions:" && ls -la /app/start.sh
