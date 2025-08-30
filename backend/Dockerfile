@@ -25,7 +25,7 @@ RUN uv venv && \
 FROM python:3.11-slim
 
 # Cache buster to force rebuild
-ARG CACHE_BUST=2025-08-30-22-45
+ARG CACHE_BUST=2025-08-30-23-00
 RUN echo "Cache bust: $CACHE_BUST"
 
 # Install runtime dependencies
@@ -66,11 +66,12 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Create startup script with absolute python path
+# Create startup script with direct venv python execution
 RUN echo '#!/bin/bash' > /app/start.sh && \
     echo 'cd /app' >> /app/start.sh && \
-    echo 'export PATH="/app/.venv/bin:$PATH"' >> /app/start.sh && \
-    echo 'exec python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' >> /app/start.sh && \
+    echo 'echo "Using Python: $(/app/.venv/bin/python --version)"' >> /app/start.sh && \
+    echo 'echo "Available modules: $(/app/.venv/bin/python -c "import sys; print([p for p in sys.path])")"' >> /app/start.sh && \
+    echo 'exec /app/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}' >> /app/start.sh && \
     chmod +x /app/start.sh && \
     echo "Startup script created:" && cat /app/start.sh && \
     echo "Script permissions:" && ls -la /app/start.sh
