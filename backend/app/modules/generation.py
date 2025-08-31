@@ -83,7 +83,8 @@ class GenerationModule:
                 await self._init_claude(self.llm_config['anthropic'])
             
             if not self.clients:
-                raise ValueError("No LLM providers configured")
+                logger.warning("No LLM providers configured - service will run in limited mode")
+                logger.warning("Please set environment variables: GOOGLE_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY")
             
             logger.info(f"Generation module initialized with providers: {list(self.clients.keys())}")
             
@@ -103,8 +104,8 @@ class GenerationModule:
         """Gemini 클라이언트 초기화"""
         try:
             api_key = config.get('api_key')
-            if not api_key:
-                logger.warning("Gemini API key not found, skipping initialization")
+            if not api_key or api_key == "${GOOGLE_API_KEY:-}" or api_key.startswith("${"): 
+                logger.warning("Gemini API key not configured, skipping initialization")
                 return
             
             genai.configure(api_key=api_key)
@@ -127,8 +128,8 @@ class GenerationModule:
         """OpenAI 클라이언트 초기화"""
         try:
             api_key = config.get('api_key')
-            if not api_key:
-                logger.warning("OpenAI API key not found, skipping initialization")
+            if not api_key or api_key == "${OPENAI_API_KEY:-}" or api_key.startswith("${"): 
+                logger.warning("OpenAI API key not configured, skipping initialization")
                 return
             
             client = OpenAI(api_key=api_key)
@@ -150,8 +151,8 @@ class GenerationModule:
         """Claude 클라이언트 초기화"""
         try:
             api_key = config.get('api_key')
-            if not api_key:
-                logger.warning("Claude API key not found, skipping initialization")
+            if not api_key or api_key == "${ANTHROPIC_API_KEY:-}" or api_key.startswith("${"):
+                logger.warning("Claude API key not configured, skipping initialization")
                 return
             
             client = Anthropic(api_key=api_key)

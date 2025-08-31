@@ -28,11 +28,22 @@ class EnhancedSessionModule:
         self.cleanup_interval = config.get('cleanup_interval', 300)  # 5분
         
         # LLM for summarization
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
-            google_api_key=config.get('llm', {}).get('google', {}).get('api_key'),
-            temperature=0.3
-        )
+        google_api_key = config.get('llm', {}).get('google', {}).get('api_key')
+        
+        # API 키 확인 및 유효성 검사
+        if not google_api_key or google_api_key == "${GOOGLE_API_KEY:-}":
+            logger.warning("Google API key not configured, using dummy session module")
+            self.llm = None  # 나중에 초기화하거나 대체 LLM 사용
+        else:
+            try:
+                self.llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.0-flash-exp",
+                    google_api_key=google_api_key,
+                    temperature=0.3
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize Google Generative AI: {e}")
+                self.llm = None
         
         # 인메모리 세션 저장소
         self.sessions: Dict[str, Dict[str, Any]] = {}

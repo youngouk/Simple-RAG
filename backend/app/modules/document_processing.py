@@ -57,11 +57,17 @@ class DocumentProcessor:
                 model_name = self.embeddings_config.get('model', 'text-embedding-004')
                 # config.yaml의 llm.google.api_key에서 가져오기
                 api_key = self.config.get('llm', {}).get('google', {}).get('api_key')
-                self.embedder = GoogleGenerativeAIEmbeddings(
-                    model=model_name,
-                    google_api_key=api_key
-                )
-                logger.info(f"Google embeddings initialized with model: {model_name}")
+                
+                if not api_key or api_key == "${GOOGLE_API_KEY:-}" or api_key.startswith("${"):
+                    logger.warning("Google API key not configured - embeddings will not work")
+                    logger.warning("Please set GOOGLE_API_KEY environment variable in Railway")
+                    self.embedder = None
+                else:
+                    self.embedder = GoogleGenerativeAIEmbeddings(
+                        model=model_name,
+                        google_api_key=api_key
+                    )
+                    logger.info(f"Google embeddings initialized with model: {model_name}")
             else:
                 raise ValueError(f"Unsupported embedding provider: {provider}")
             
@@ -72,7 +78,7 @@ class DocumentProcessor:
                 
         except Exception as e:
             logger.error(f"Failed to initialize embedders: {e}")
-            raise
+            logger.warning("Document processing will be limited without embeddings")
     
     async def load_document(self, file_path: str, metadata: Dict[str, Any] = None) -> List[Document]:
         """문서 로드"""
